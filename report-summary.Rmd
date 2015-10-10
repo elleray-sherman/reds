@@ -1,0 +1,259 @@
+---
+title: "Random Stats of Blowjob 2012-2015: Summary"
+output: html_document
+---
+
+Various interesting statistics for all posts on [reddit.com/r/randomactsofblowjob](https://reddit.com/r/randomactsofblowjob) from subreddit creation on 11 March 2012 until 10 October 2015. For raw stats on every individual matched location, see [all locations stats](report-all-locations.html).
+
+
+```{r, echo=FALSE}
+library(proto)
+library(gsubfn)
+library(DBI)
+library(RSQLite)
+library(sqldf)
+library(knitr)
+library(maps)
+library(mapdata)
+
+con = dbConnect(SQLite(), dbname='reds.db')
+
+res = dbSendQuery(con, 'select * from view_location_counts_bj')
+l.stats = dbFetch(res, n=-1)
+
+simpleCap = function(x) {
+  s = strsplit(x, " ")[[1]]
+  paste(toupper(substring(s, 1, 1)), substring(s, 2), sep = "", collapse = " ")
+}
+
+locationString = function(type, city, region, region_name, country_name) {
+  if(is.element(type, c(1,4,5,6))) {
+    if(country_name == 'United States') {
+      paste(simpleCap(city), region, country_name, sep = ", ")
+    }
+    else {
+      paste(simpleCap(city), country_name, sep = ", ")
+    }
+  }
+  else if(type == 2) {
+    paste(simpleCap(region_name), country_name, sep = ", ")
+  }
+  else if(type == 3) {
+    country_name
+  }
+}
+
+l.stats$location_name = mapply(locationString, l.stats$type, l.stats$city, l.stats$region, l.stats$region_name, l.stats$country_name)
+l.stats$lat=as.numeric(l.stats$lat)
+l.stats$lon=as.numeric(l.stats$lon)
+
+l.stats$pop_ratio = l.stats$population / l.stats$total_posts
+l.stats$mf_ratio = round(l.stats$m4f_posts / l.stats$f4m_posts,1)
+l.stats$mm_ratio = round((l.stats$total_posts - l.stats$m4m_posts) / l.stats$m4m_posts,1)
+l.stats$success_ratio = round((l.stats$total_posts - l.stats$success_posts) / l.stats$success_posts,1)
+```
+
+## Posts by year
+
+```{r,echo=FALSE}
+
+years = c(2012,2013,2014,2015)
+for(year in years) {
+  query = sprintf("select
+      count(case when strftime('%%Y', created) = '%1$s' then id else null end) 'total_posts',
+      count(case when strftime('%%Y', created) = '%1$s' and type = 'm4f' then id else null end) 'm4f_posts',
+      count(case when strftime('%%Y', created) = '%1$s' and type = 'm4m' then id else null end) 'm4m_posts',
+      count(case when strftime('%%Y', created) = '%1$s' and type = 'm4a' then id else null end) 'm4a_posts',
+      count(case when strftime('%%Y', created) = '%1$s' and type = 'f4m' then id else null end) 'f4m_posts',
+      count(case when strftime('%%Y', created) = '%1$s' and (type not in ('m4f','f4m','m4m','m4a') or type is null) then id else null end) 'other_posts'
+    from view_spbj", year)
+  res = dbSendQuery(con, query)
+  single_years_subs = dbFetch(res, n=-1)
+  single_years_subs$year = year
+  if(!exists('subs_by_year')) {
+    subs_by_year = single_years_subs
+  }
+  else {
+    subs_by_year = rbind(subs_by_year, single_years_subs)
+  }
+}
+
+# Reorder so year is first
+subs_by_year = subs_by_year[c(7,1:6)]
+
+subs_by_year$m4f_percent = round((subs_by_year$m4f_posts / subs_by_year$total_posts) * 100,1)
+subs_by_year$m4m_percent = round((subs_by_year$m4m_posts / subs_by_year$total_posts) * 100,1)
+subs_by_year$m4a_percent = round((subs_by_year$m4a_posts / subs_by_year$total_posts) * 100,1)
+subs_by_year$f4m_percent = round((subs_by_year$f4m_posts / subs_by_year$total_posts) * 100,1)
+subs_by_year$other_percent = round((subs_by_year$other_posts / subs_by_year$total_posts) * 100,1)
+
+barplot(t(data.matrix(subs_by_year[3:7])), names.arg=c('2012 (from 11th March)','2013','2014','2015 (till 10th Oct)' ), ylab='Total posts', col=c('#0000ff','#9966ff','#CC9900','#FF0099','#bbbbbb'), args.legend = list(x = "topleft", bty="n"), legend.text = c('M4F','M4M','M4A','F4M','Other / no match'))
+
+kable(subs_by_year[c('year','total_posts','m4f_posts','m4m_posts','m4a_posts','f4m_posts','other_posts')], row.names=FALSE, col.names = c('Year','Total posts','M4F posts','M4M posts','M4A posts','F4M posts','Other / no match posts'), caption='Posts by number')
+
+kable(subs_by_year[c('year','m4f_percent','m4m_percent','m4a_percent','f4m_percent','other_percent')], row.names=FALSE, col.names= c('Year','M4F %','M4M %','M4A %','F4M %','Other / no match %'), caption='Posts by %')
+```
+
+<br/>
+
+## Average upvotes per post by post type
+
+<br/>
+
+```{r,echo=FALSE}
+res = dbSendQuery(con, "select
+  sum(case when type = 'm4f' then cast(score as float) else null end) / count(case when type = 'm4f' then cast(score as float) else null end) m4f_av_score,
+  sum(case when type = 'f4m' then cast(score as float) else null end) / count(case when type = 'f4m' then cast(score as float) else null end) f4m_av_score,
+  sum(case when type = 'm4m' then cast(score as float) else null end) / count(case when type = 'm4m' then cast(score as float) else null end) m4m_av_score,
+  sum(case when type = 'm4a' then cast(score as float) else null end) / count(case when type = 'm4a' then cast(score as float) else null end) m4a_av_score,
+  sum(case when type = 't4m' then cast(score as float) else null end) / count(case when type = 't4m' then cast(score as float) else null end) m4a_av_score,
+  sum(case when type = 'm4t' then cast(score as float) else null end) / count(case when type = 'm4t' then cast(score as float) else null end) m4a_av_score,
+  sum(case when success = 1 then cast(score as float) else null end) / count(case when success = 1 then cast(score as float) else null end) success_av_score
+from view_spbj")
+bj_post_averages = dbFetch(res)
+kable(round(bj_post_averages,1), row.names=FALSE, col.names=c('M4F', 'F4M', 'M4M', 'M4A', 'T4M', 'M4T', 'Success'))
+```
+<br/>
+
+<!-- Not included as doesn't tell anything map doesn't
+## Posts by country
+-->
+
+```{r,echo=FALSE}
+# slices = c(nrow(subset(l.stats, l.stats$country == 'United States')), nrow(subset(l.stats, l.stats$country == 'United Kingdom')), nrow(subset(l.stats, l.stats$country == 'Australia')), nrow(subset(l.stats, l.stats$country == 'Canada')), nrow(subset(l.stats, l.stats$country == 'Germany')), nrow(subset(l.stats, l.stats$country == 'The Netherlands')), nrow(subset(l.stats, l.stats$country != 'United States' & l.stats$country != 'Canada' & l.stats$country != 'Australia' & l.stats$country != 'United Kingdom')))
+# lbls = c('US','UK','Australia','Canada','Germany','The Netherlands','Other')
+# pie(slices, labels = lbls, main="Pie Chart of Countries")
+```
+
+# Age distribution (18 - 50)
+
+Age matches outside this range were very few and mostly false matches.
+
+```{r,echo=FALSE}
+types = c('m4f','f4m','m4m','m4a')
+for(type in types) {
+  query = sprintf("select count(*) count, poster_age from scraped_posts where type = '%s' and poster_age is not null and poster_age >= 18 and poster_age <= 50 group by poster_age order by poster_age", type)
+  res = dbSendQuery(con, query)
+  found_ages = dbFetch(res)
+  barplot(t(data.matrix(found_ages$count)), names.arg = found_ages$poster_age, main = toupper(type), xlab='Poster ages', ylab='Number of posts')
+}
+```
+
+Locations by total posts
+=======================
+
+See [locations list](report-all-locations.html) for stats on all `r nrow(l.stats)` matched post locations.
+
+## Top 15 total posts by location 
+
+```{r, echo=FALSE}
+kable(head(l.stats[c('location_name','total_posts','m4f_posts','m4m_posts','f4m_posts','m4a_posts','success_posts','mf_ratio','mm_ratio','success_ratio')],15), row.names=FALSE, col.names=c('Location','Total posts','M4F posts','M4M posts','F4M posts','M4A posts','Success posts','M4F to F4M ratio','Non M4M to M4M ratio','Non success to success ratio*'))
+```
+
+Maps
+----
+
+Area of circles is directly proportional to total number of posts for that location (hence why they all overlap on world map. See other maps for more detail). The smallest circles are for a location with a single post.
+
+'City' means posts specifying a certain city or local area, 'Region' means posts specifying a broad area (region, US state, UK county etc.), 'Country' is for posts specifying a whole country.
+
+```{r, echo=FALSE, out.width='900px'}
+world_map = map('worldHires')
+points(l.stats$lon,l.stats$lat,col=ifelse(l.stats$type == 1 | l.stats$type == 6, 'red',ifelse(l.stats$type==2, 'blue', '#29C326')), pch=20,cex=l.stats$total_posts^(1/2) / 10)
+legend(title='World', x=-170, y=1, legend=c('City','Region','Country'), fill=c('red','blue','#29C326'))
+
+nw_europe_map = map('worldHires', xlim=c(-11,15), ylim=c(44,59.5))
+points(l.stats$lon,l.stats$lat,col=ifelse(l.stats$type == 1 | l.stats$type == 6, 'red',ifelse(l.stats$type==2, 'blue', '#29C326')),pch=20,cex=l.stats$total_posts^(1/2) / 10)
+legend(title='NW Europe', x=-11, y=49.6, legend=c('City','Region','Country'), fill=c('red','blue','#29C326'))
+
+north_america_map = map('worldHires', xlim=c(-130,-60), ylim=c(15,52))
+points(l.stats$lon,l.stats$lat,col=ifelse(l.stats$type == 1 | l.stats$type == 6, 'red',ifelse(l.stats$type==2, 'blue', '#29C326')),pch=20,cex=l.stats$total_posts^(1/2) / 10)
+legend(title='North America', x=-130.4, y=28, legend=c('City','State / Region','Country'), fill=c('red','blue','#29C326'))
+
+east_us_map = map('worldHires', xlim=c(-79,-70), ylim=c(35,42))
+points(l.stats$lon,l.stats$lat,col=ifelse(l.stats$type == 1 | l.stats$type == 6, 'red',ifelse(l.stats$type==2, 'blue', '#29C326')),pch=20,cex=l.stats$total_posts^(1/2) / 10)
+legend(title='East Coast US', x=-74.5, y=38.5, legend=c('City','State / Region','Country'), fill=c('red','blue','#29C326'))
+
+california_map = map('worldHires', xlim=c(-124,-115), ylim=c(32,39))
+points(l.stats$lon,l.stats$lat,col=ifelse(l.stats$type == 1 | l.stats$type == 6, 'red',ifelse(l.stats$type==2, 'blue', '#29C326')),pch=20,cex=l.stats$total_posts^(1/2) / 10)
+legend(title='California', x=-123.5, y=34.2, legend=c('City','State / Region','Country'), fill=c('red','blue','#29C326'))
+```
+
+Ratios for locations
+=====================
+
+See [all locations stats](report-all-locations.html) for ratios for all locations.
+
+## Ratio of M4F posts to F4M posts by location
+
+Only locations with at least 5 F4M posts are included, so as to aim for some sort of statistical significance.
+
+
+```{r, echo=FALSE}
+l.stats_mf_ratio = subset(l.stats[c("location_name","m4f_posts","f4m_posts","mf_ratio")], l.stats$f4m_posts >=5)
+l.stats_mf_ratio$mf_ratio = round(l.stats_mf_ratio$mf_ratio,1)
+```
+
+### Top 15 lowest ratio ('Lesser sausagefests')
+
+```{r, echo=FALSE}
+kable(head(l.stats_mf_ratio[order(l.stats_mf_ratio$mf_ratio),],15), row.names=FALSE, col.names=c('Location', 'M4F posts', 'F4M posts', 'M4F to F4M ratio'))
+```
+
+### Top 15 highest ratio ('Total sausagefests')
+
+```{r, echo=FALSE}
+kable(head(l.stats_mf_ratio[order(l.stats_mf_ratio$mf_ratio, decreasing=TRUE),],15), row.names=FALSE, col.names=c('Location', 'M4F posts', 'F4M posts', 'M4F to F4M ratio'))
+
+```
+
+## Ratio of M4M posts to non M4M posts by location
+
+Only locations with at least 10 M4M posts are included.
+
+```{r, echo=FALSE}
+l.stats_mm_ratio = subset(l.stats[c("location_name","total_posts","m4m_posts","mm_ratio")], l.stats$m4m_posts >=10)
+l.stats_mm_ratio$total_posts = l.stats_mm_ratio$total_posts - l.stats_mm_ratio$m4m_posts
+l.stats_mm_ratio$mm_ratio = round(l.stats_mm_ratio$mm_ratio,1)
+```
+
+### Top 15 lowest ratio ('Go homo')
+
+```{r, echo=FALSE}
+kable(head(l.stats_mm_ratio[order(l.stats_mm_ratio$mm_ratio),],15), row.names=FALSE, col.names=c('Location','Non M4M posts','M4M posts','Non M4M to M4M ratio'))
+```
+
+### Top 15 highest ratio ('No homo')
+```{r, echo=FALSE}
+kable(head(l.stats_mm_ratio[order(l.stats_mm_ratio$mm_ratio, decreasing=TRUE),],15), row.names=FALSE, col.names=c('Location','Non M4M posts','M4M posts','Non M4M to M4M ratio'))
+```
+
+<!-- Not including population outputs below because population figures are for the city and don't match the metro area. I started adding some manually but there's too many. Would require a better locations database with metro area information / populations included -->
+
+```{r, echo=FALSE}
+# l.stats_pop_ratio = subset(l.stats[c("location","total_posts","population","pop_ratio")], l.stats$total_posts >=10 & l.stats$pop_ratio > 0)
+# l.stats_pop_ratio$population = format(l.stats_pop_ratio$population, big.mark=',')
+# l.stats_pop_ratio$pop_ratio = round(l.stats_pop_ratio$pop_ratio,1)
+# print('Snowball\'s chance in hell')
+# print('Snowball\'s chance in Death Valley')
+# kable(head(l.stats_pop_ratio[order(l.stats_pop_ratio$pop_ratio),],50),row.names=FALSE, col.names=c('Location', 'Total posts', 'Population', 'Population ratio'))
+```
+
+```{r, echo=FALSE}
+# l.stats_pop_ratio = subset(l.stats[c("location","f4m_posts","population","pop_ratio")], l.stats$f4m_posts >=5 & l.stats$pop_ratio > 0)
+# l.stats_pop_ratio$population = format(l.stats_pop_ratio$population, big.mark=',')
+# l.stats_pop_ratio$pop_ratio = round(l.stats_pop_ratio$pop_ratio,1)
+# kable(head(l.stats_pop_ratio[order(l.stats_pop_ratio$pop_ratio),],50),row.names=FALSE, col.names=c('Location', 'F4M posts', 'Population', 'Population ratio'))
+```
+
+## Top 15 lowest ratio of total posts to success posts ('Addresses with suckcesses')
+
+Only locations with   at least 5 success posts are included (which is less than 15 locations)
+
+```{r, echo=FALSE}
+l.stats_success_ratio = subset(l.stats[c('location_name','total_posts','success_posts','success_ratio')], l.stats$success_posts >= 5 & l.stats$success_ratio > 0)
+l.stats_success_ratio$success_ratio = round(l.stats_success_ratio$success_ratio,1)
+kable(head(l.stats_success_ratio[order(l.stats_success_ratio$success_ratio),],15),row.names=FALSE, col.names=c('Location', 'Non success posts','Success posts','Non success to success ratio*'))
+```
+
+\* This is just the ratio of all posts without a [success] tag to success posts, it doesn't say anything about what % of posts led to success
