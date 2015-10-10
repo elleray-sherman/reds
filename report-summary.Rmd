@@ -78,6 +78,10 @@ for(year in years) {
   }
 }
 
+# Get total ratios for later
+total.mf.ratio = sum(subs_by_year$m4f_posts) / sum(subs_by_year$f4m_posts)
+total.mm.ratio = (sum(subs_by_year$total_posts) - sum(subs_by_year$m4m_posts)) / sum(subs_by_year$m4m_posts)
+
 # Reorder so year is first
 subs_by_year = subs_by_year[c(7,1:6)]
 
@@ -144,7 +148,10 @@ Locations by total posts
 
 See [locations list](report-all-locations.html) for stats on all `r nrow(l.stats)` matched post locations.
 
-## Top 15 total posts by location 
+## Top 15 total posts by location
+
+- The M4F to F4M ratio for all posts in all locations is `r round(total.mf.ratio, 1)`.
+- The Non-M4M to M4M ratio for all posts in all locations is `r round(total.mm.ratio, 1)`,
 
 ```{r, echo=FALSE}
 kable(head(l.stats[c('location_name','total_posts','m4f_posts','m4m_posts','f4m_posts','m4a_posts','success_posts','mf_ratio','mm_ratio','success_ratio')],15), row.names=FALSE, col.names=c('Location','Total posts','M4F posts','M4M posts','F4M posts','M4A posts','Success posts','M4F to F4M ratio','Non M4M to M4M ratio','Non success to success ratio*'))
@@ -168,7 +175,7 @@ legend(title='NW Europe', x=-11, y=49.6, legend=c('City','Region','Country'), fi
 
 north_america_map = map('worldHires', xlim=c(-130,-60), ylim=c(15,52))
 points(l.stats$lon,l.stats$lat,col=ifelse(l.stats$type == 1 | l.stats$type == 6, 'red',ifelse(l.stats$type==2, 'blue', '#29C326')),pch=20,cex=l.stats$total_posts^(1/2) / 10)
-legend(title='North America', x=-130.4, y=28, legend=c('City','State / Region','Country'), fill=c('red','blue','#29C326'))
+legend(title='North America', x=-130.4, y=26.3, legend=c('City','State / Region','Country'), fill=c('red','blue','#29C326'))
 
 east_us_map = map('worldHires', xlim=c(-79,-70), ylim=c(35,42))
 points(l.stats$lon,l.stats$lat,col=ifelse(l.stats$type == 1 | l.stats$type == 6, 'red',ifelse(l.stats$type==2, 'blue', '#29C326')),pch=20,cex=l.stats$total_posts^(1/2) / 10)
@@ -186,36 +193,41 @@ See [all locations stats](report-all-locations.html) for ratios for all location
 
 ## Ratio of M4F posts to F4M posts by location
 
-Only locations with at least 5 F4M posts are included, so as to aim for some sort of statistical significance.
-
-
 ```{r, echo=FALSE}
-l.stats_mf_ratio = subset(l.stats[c("location_name","m4f_posts","f4m_posts","mf_ratio")], l.stats$f4m_posts >=5)
-l.stats_mf_ratio$mf_ratio = round(l.stats_mf_ratio$mf_ratio,1)
+l.stats.mf.ratio = subset(l.stats[c("location_name","m4f_posts","f4m_posts","mf_ratio")], l.stats$f4m_posts >= 5)
 ```
+
+- The M4F to F4M ratio for all posts in all locations is `r round(total.mf.ratio, 1)`.
+- Only locations with at least 5 F4M posts are included in the first two tables, so as to aim for some sort of statistical significance.
 
 ### Top 15 lowest ratio ('Lesser sausagefests')
 
 ```{r, echo=FALSE}
-kable(head(l.stats_mf_ratio[order(l.stats_mf_ratio$mf_ratio),],15), row.names=FALSE, col.names=c('Location', 'M4F posts', 'F4M posts', 'M4F to F4M ratio'))
+kable(head(l.stats.mf.ratio[order(l.stats.mf.ratio$mf_ratio),],15), row.names=FALSE, col.names=c('Location', 'M4F posts', 'F4M posts', 'M4F to F4M ratio'))
 ```
 
-### Top 15 highest ratio ('Total sausagefests')
+### Top 15 highest ratio ('Greater sausagefests')
 
 ```{r, echo=FALSE}
-kable(head(l.stats_mf_ratio[order(l.stats_mf_ratio$mf_ratio, decreasing=TRUE),],15), row.names=FALSE, col.names=c('Location', 'M4F posts', 'F4M posts', 'M4F to F4M ratio'))
+kable(head(l.stats.mf.ratio[order(l.stats.mf.ratio$mf_ratio, decreasing=TRUE),],15), row.names=FALSE, col.names=c('Location', 'M4F posts', 'F4M posts', 'M4F to F4M ratio'))
+```
 
+### Top 15 M4F posts with no F4M posts ('Total sausagefests')
+
+```{r, echo=FALSE}
+l.stats.no.f4m = subset(l.stats[c("location_name","m4f_posts","f4m_posts","mf_ratio")], l.stats$f4m_posts == 0)
+kable(head(l.stats.no.f4m[order(l.stats.no.f4m$m4f_posts, decreasing=TRUE),],15), row.names=FALSE, col.names=c('Location', 'M4F posts', 'F4M posts', 'M4F to F4M ratio'))
 ```
 
 ## Ratio of M4M posts to non M4M posts by location
 
-Only locations with at least 10 M4M posts are included.
-
 ```{r, echo=FALSE}
 l.stats_mm_ratio = subset(l.stats[c("location_name","total_posts","m4m_posts","mm_ratio")], l.stats$m4m_posts >=10)
 l.stats_mm_ratio$total_posts = l.stats_mm_ratio$total_posts - l.stats_mm_ratio$m4m_posts
-l.stats_mm_ratio$mm_ratio = round(l.stats_mm_ratio$mm_ratio,1)
 ```
+
+- The Non-M4M to M4M ratio for all posts in all locations is `r round(total.mm.ratio, 1)`.
+- Only locations with at least 10 M4M posts are included in these tables.
 
 ### Top 15 lowest ratio ('Go homo')
 
@@ -248,7 +260,7 @@ kable(head(l.stats_mm_ratio[order(l.stats_mm_ratio$mm_ratio, decreasing=TRUE),],
 
 ## Top 15 lowest ratio of total posts to success posts ('Addresses with suckcesses')
 
-Only locations with   at least 5 success posts are included (which is less than 15 locations)
+- Only locations with at least 5 success posts are included
 
 ```{r, echo=FALSE}
 l.stats_success_ratio = subset(l.stats[c('location_name','total_posts','success_posts','success_ratio')], l.stats$success_posts >= 5 & l.stats$success_ratio > 0)
