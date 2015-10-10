@@ -1,4 +1,4 @@
-[RAOX stats](http://elleray-sherman.github.io/)
+Code for [RAOX stats](http://elleray-sherman.github.io/)
 
 Reddit data scraping
 =====================
