@@ -1,0 +1,65 @@
+---
+title: "Random Stats of Blowjob 2012-2015: All locations list"
+output: html_document
+---
+
+Location match statistics for all posts on [reddit.com/r/randomactsofblowjob](https://reddit.com/r/randomactsofblowjob) from subreddit creation on 11 March 2012 to 10 October 2015
+
+```{r, echo=FALSE}
+library(proto)
+library(gsubfn)
+library(DBI)
+library(RSQLite)
+library(sqldf)
+library(knitr)
+
+con = dbConnect(SQLite(), dbname='reds.db')
+
+res = dbSendQuery(con, 'select * from view_location_counts_bj')
+l.stats = dbFetch(res, n=-1)
+
+simpleCap = function(x) {
+  s = strsplit(x, " ")[[1]]
+  paste(toupper(substring(s, 1, 1)), substring(s, 2), sep = "", collapse = " ")
+}
+
+locationString = function(type, city, region, region_name, country_name) {
+  if(is.element(type, c(1,4,5,6))) {
+    if(country_name == 'United States') {
+      paste(simpleCap(city), region, country_name, sep = ", ")
+    }
+    else {
+      paste(simpleCap(city), country_name, sep = ", ")
+    }
+  }
+  else if(type == 2) {
+    paste(simpleCap(region_name), country_name, sep = ", ")
+  }
+  else if(type == 3) {
+    country_name
+  }
+}
+
+l.stats$location_name = mapply(locationString, l.stats$type, l.stats$city, l.stats$region, l.stats$region_name, l.stats$country_name)
+l.stats$lat=as.numeric(l.stats$lat)
+l.stats$lon=as.numeric(l.stats$lon)
+
+l.stats$pop_ratio = l.stats$population / l.stats$total_posts
+l.stats$mf_ratio = round(l.stats$m4f_posts / l.stats$f4m_posts,1)
+l.stats$mm_ratio = round((l.stats$total_posts - l.stats$m4m_posts) / l.stats$m4m_posts,1)
+l.stats$success_ratio = round((l.stats$total_posts - l.stats$success_posts) / l.stats$success_posts,1)
+```
+
+Summary with charts, maps and top/bottom 10 ratios
+-----------------------------------------------------
+
+- See [summary page](report-summary.html)
+
+All locations by total posts 
+========================
+
+```{r, echo=FALSE}
+kable(l.stats[c('location_name','total_posts','m4f_posts','m4m_posts','f4m_posts','m4a_posts','success_posts','mf_ratio','mm_ratio','success_ratio')], row.names=FALSE, col.names=c('Location','Total posts','M4F posts','M4M posts','F4M posts','M4A posts','Success posts','M4F to F4M ratio','Non M4M to M4M ratio','Non success to success ratio*'))
+```
+
+\* This is just the ratio of all posts without a [SUCCESS] tag to success posts, it doesn't say anything about what % of posts led to success.
