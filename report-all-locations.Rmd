@@ -12,6 +12,8 @@ library(DBI)
 library(RSQLite)
 library(sqldf)
 library(knitr)
+library(maps)
+library(mapdata)
 
 con = dbConnect(SQLite(), dbname='reds.db')
 
@@ -53,10 +55,11 @@ l.stats$success_ratio = round((l.stats$total_posts - l.stats$success_posts) / l.
 Summary with charts, maps and top/bottom 10 ratios
 -----------------------------------------------------
 
-- See [summary page](report-summary.html)
+- See [summary page](index.html)
+- For smaller scale maps not included in the summary, see [maps](report-maps.html)
 
-All locations by total posts 
-========================
+All locations by total posts
+----------------------------
 
 ```{r, echo=FALSE}
 kable(l.stats[c('location_name','total_posts','m4f_posts','m4m_posts','f4m_posts','m4a_posts','success_posts','mf_ratio','mm_ratio','success_ratio')], row.names=FALSE, col.names=c('Location','Total posts','M4F posts','M4M posts','F4M posts','M4A posts','Success posts','M4F to F4M ratio','Non M4M to M4M ratio','Non success to success ratio*'))

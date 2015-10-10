@@ -3,7 +3,7 @@ title: "Random Stats of Blowjob 2012-2015: Summary"
 output: html_document
 ---
 
-Various interesting statistics for all posts on [reddit.com/r/randomactsofblowjob](https://reddit.com/r/randomactsofblowjob) from subreddit creation on 11 March 2012 until 10 October 2015. For raw stats on every individual matched location, see [all locations stats](report-all-locations.html).
+Various interesting statistics for all posts on [reddit.com/r/randomactsofblowjob](https://reddit.com/r/randomactsofblowjob) from subreddit creation on 11 March 2012 until 10 October 2015. For raw stats on every individual matched location, see [all locations stats](report-all-locations.html). For smaller scale maps not included in the summary, see [maps](report-maps.html).
 
 
 ```{r, echo=FALSE}
@@ -150,8 +150,8 @@ See [locations list](report-all-locations.html) for stats on all `r nrow(l.stats
 
 ## Top 15 total posts by location
 
-- The M4F to F4M ratio for all posts in all locations is `r round(total.mf.ratio, 1)`.
-- The Non-M4M to M4M ratio for all posts in all locations is `r round(total.mm.ratio, 1)`,
+- The M4F to F4M ratio for all posts in all locations is `r round(total.mf.ratio, 1)`
+- The Non-M4M to M4M ratio for all posts in all locations is `r round(total.mm.ratio, 1)`
 
 ```{r, echo=FALSE}
 kable(head(l.stats[c('location_name','total_posts','m4f_posts','m4m_posts','f4m_posts','m4a_posts','success_posts','mf_ratio','mm_ratio','success_ratio')],15), row.names=FALSE, col.names=c('Location','Total posts','M4F posts','M4M posts','F4M posts','M4A posts','Success posts','M4F to F4M ratio','Non M4M to M4M ratio','Non success to success ratio*'))
@@ -160,30 +160,26 @@ kable(head(l.stats[c('location_name','total_posts','m4f_posts','m4m_posts','f4m_
 Maps
 ----
 
+**For smaller scale maps not included in this summary (NW Europe, NE USA, SE USA, California, Asia & Australasia), see [maps](report-maps.html).**
+
 Area of circles is directly proportional to total number of posts for that location (hence why they all overlap on world map. See other maps for more detail). The smallest circles are for a location with a single post.
 
 'City' means posts specifying a certain city or local area, 'Region' means posts specifying a broad area (region, US state, UK county etc.), 'Country' is for posts specifying a whole country.
+
+I just realised this map still has the Soviet Union! Sorry Latvia...
 
 ```{r, echo=FALSE, out.width='900px'}
 world_map = map('worldHires')
 points(l.stats$lon,l.stats$lat,col=ifelse(l.stats$type == 1 | l.stats$type == 6, 'red',ifelse(l.stats$type==2, 'blue', '#29C326')), pch=20,cex=l.stats$total_posts^(1/2) / 10)
 legend(title='World', x=-170, y=1, legend=c('City','Region','Country'), fill=c('red','blue','#29C326'))
 
-nw_europe_map = map('worldHires', xlim=c(-11,15), ylim=c(44,59.5))
+europe_map = map('worldHires', xlim=c(-11,50), ylim=c(36,65))
 points(l.stats$lon,l.stats$lat,col=ifelse(l.stats$type == 1 | l.stats$type == 6, 'red',ifelse(l.stats$type==2, 'blue', '#29C326')),pch=20,cex=l.stats$total_posts^(1/2) / 10)
-legend(title='NW Europe', x=-11, y=49.6, legend=c('City','Region','Country'), fill=c('red','blue','#29C326'))
+legend(title='Europe', x=28, y=54.7, legend=c('City','Region','Country'), fill=c('red','blue','#29C326'))
 
 north_america_map = map('worldHires', xlim=c(-130,-60), ylim=c(15,52))
 points(l.stats$lon,l.stats$lat,col=ifelse(l.stats$type == 1 | l.stats$type == 6, 'red',ifelse(l.stats$type==2, 'blue', '#29C326')),pch=20,cex=l.stats$total_posts^(1/2) / 10)
 legend(title='North America', x=-130.4, y=26.3, legend=c('City','State / Region','Country'), fill=c('red','blue','#29C326'))
-
-east_us_map = map('worldHires', xlim=c(-79,-70), ylim=c(35,42))
-points(l.stats$lon,l.stats$lat,col=ifelse(l.stats$type == 1 | l.stats$type == 6, 'red',ifelse(l.stats$type==2, 'blue', '#29C326')),pch=20,cex=l.stats$total_posts^(1/2) / 10)
-legend(title='East Coast US', x=-74.5, y=38.5, legend=c('City','State / Region','Country'), fill=c('red','blue','#29C326'))
-
-california_map = map('worldHires', xlim=c(-124,-115), ylim=c(32,39))
-points(l.stats$lon,l.stats$lat,col=ifelse(l.stats$type == 1 | l.stats$type == 6, 'red',ifelse(l.stats$type==2, 'blue', '#29C326')),pch=20,cex=l.stats$total_posts^(1/2) / 10)
-legend(title='California', x=-123.5, y=34.2, legend=c('City','State / Region','Country'), fill=c('red','blue','#29C326'))
 ```
 
 Ratios for locations
@@ -197,8 +193,8 @@ See [all locations stats](report-all-locations.html) for ratios for all location
 l.stats.mf.ratio = subset(l.stats[c("location_name","m4f_posts","f4m_posts","mf_ratio")], l.stats$f4m_posts >= 5)
 ```
 
-- The M4F to F4M ratio for all posts in all locations is `r round(total.mf.ratio, 1)`.
-- Only locations with at least 5 F4M posts are included in the first two tables, so as to aim for some sort of statistical significance.
+- The M4F to F4M ratio for all posts in all locations is `r round(total.mf.ratio, 1)`
+- Only locations with at least 5 F4M posts are included in the first two tables, so as to aim for some sort of statistical significance
 
 ### Top 15 lowest ratio ('Lesser sausagefests')
 
@@ -226,8 +222,8 @@ l.stats_mm_ratio = subset(l.stats[c("location_name","total_posts","m4m_posts","m
 l.stats_mm_ratio$total_posts = l.stats_mm_ratio$total_posts - l.stats_mm_ratio$m4m_posts
 ```
 
-- The Non-M4M to M4M ratio for all posts in all locations is `r round(total.mm.ratio, 1)`.
-- Only locations with at least 10 M4M posts are included in these tables.
+- The Non-M4M to M4M ratio for all posts in all locations is `r round(total.mm.ratio, 1)`
+- Only locations with at least 10 M4M posts are included in these tables
 
 ### Top 15 lowest ratio ('Go homo')
 
